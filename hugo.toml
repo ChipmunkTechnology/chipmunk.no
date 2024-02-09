@@ -1,6 +1,6 @@
 ######################## default configuration ####################
 # The base URL of your site (required). This will be prepended to all relative URLs.
-baseURL = "/chipmunk.no/" # For use with GH Pages directly, like https://chipmunktechnology.github.io/chipmunk.no/
+# baseURL = "/chipmunk.no/" # For use with GH Pages directly, like https://chipmunktechnology.github.io/chipmunk.no/
 baseURL = "/" # For use on custom domain, like https://chipmunk.no
 # Title of your website (required).
 title = "Chipmunk Technology"
