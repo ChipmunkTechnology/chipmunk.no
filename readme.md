@@ -221,3 +221,4 @@ List of projects people are building with **Hugoplate**! Have you built a projec
 | [![Open Neuromorphic](https://tinyurl.com/hp7avtje)](https://open-neuromorphic.org/) | [![AI Models](https://tinyurl.com/mu4p7dhb)](https://aimodels.org/) | [![Hugobricks](https://tinyurl.com/4x3uwhm9)](https://www.hugobricks.preview.usecue.com/) |
 |:---:|:---:|:---:|
 | **Open Neuromorphic** | **AI Models** | **Hugobricks** |
+
