@@ -134,21 +134,27 @@ All commands are entered as **root** user unless otherwise noted.
 #### Pre-setup preparations
 We start by installing a few tools that we will need later.
 
-    apt-get install wget make gcc g++ cmake maven
+```bash
+apt-get install wget make gcc g++ cmake maven
+```
 
 Create a new ext3 partition on the data disk **/dev/sdb**:
 
-    (echo "n"; echo "p"; echo ""; echo ""; echo ""; echo "t"; echo "83"; echo "w") | fdisk /dev/sdb
+```bash
+(echo "n"; echo "p"; echo ""; echo ""; echo ""; echo "t"; echo "83"; echo "w") | fdisk /dev/sdb
     
-    mkfs.ext3 /dev/sdb1
+mkfs.ext3 /dev/sdb1
+```
 
 > ext3 is the [recommended filesystem for Hadoop][27].
 
 Create a mountpoint **/mnt/data1** and add it to the file system table and mount the disk:
-    
-    mkdir /mnt/data1
-    echo "/dev/sdb1     /mnt/data1    ext3    auto,noexec,noatime,nodiratime   0   1" | tee -a /etc/fstab
-    mount /mnt/data1
+
+```bash
+mkdir /mnt/data1
+echo "/dev/sdb1     /mnt/data1    ext3    auto,noexec,noatime,nodiratime   0   1" | tee -a /etc/fstab
+mount /mnt/data1
+```
 
 > Using **noexec** for the data partition will increase security as nothing on the data partition will be allowed to ever execute.
 <br />
@@ -160,17 +166,23 @@ Installing java on Linux can be quite challenging due to licensing issues, but t
 
 We start by adding the launchpad java repository to our ***/etc/apt/sources.list*** file:
 
-    echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu precise main" | tee -a /etc/apt/sources.list
-    echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu precise main" | tee -a /etc/apt/sources.list
+```bash
+echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu precise main" | tee -a /etc/apt/sources.list
+echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu precise main" | tee -a /etc/apt/sources.list
+```
 
 Add the signing key and download information from the new repository:
 
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
-    apt-get update
+```bash
+apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
+apt-get update
+```
 
 Run the java installer:
 
-    apt-get install oracle-java7-installer
+```bash
+apt-get install oracle-java7-installer
+```
 
 Follow the instructions on screen to complete the Java 7 installation.
 
@@ -180,21 +192,27 @@ OpenTSDB has its own HBase installation tutorial [here][22]. It is very brief an
 
 Download and unpack HBase:
 
-    cd /opt
-    wget http://apache.vianett.no/hbase/hbase-0.98.2/hbase-0.98.2-hadoop2-bin.tar.gz
-    tar xvfz hbase-0.98.2-hadoop2-bin.tar.gz
-    export HBASEDIR=`pwd`/hbase-0.98.2-hadoop2/
+```bash
+cd /opt
+wget http://apache.vianett.no/hbase/hbase-0.98.2/hbase-0.98.2-hadoop2-bin.tar.gz
+tar xvfz hbase-0.98.2-hadoop2-bin.tar.gz
+export HBASEDIR=`pwd`/hbase-0.98.2-hadoop2/
+```
 
 Increase the system-wide limitations of open files and processes from the default of 1000 to 32000 by adding a few lines to ***/etc/security/limits.conf***:
 
-    echo "root    -               nofile  32768" | tee -a /etc/security/limits.conf
-    echo "root    soft/hard       nproc   32000" | tee -a /etc/security/limits.conf
-    echo "*    -               nofile  32768" | tee -a /etc/security/limits.conf
-    echo "*    soft/hard       nproc   32000" | tee -a /etc/security/limits.conf
+```bash
+echo "root    -               nofile  32768" | tee -a /etc/security/limits.conf
+echo "root    soft/hard       nproc   32000" | tee -a /etc/security/limits.conf
+echo "*    -               nofile  32768" | tee -a /etc/security/limits.conf
+echo "*    soft/hard       nproc   32000" | tee -a /etc/security/limits.conf
+```
 
 The settings above will only take effect if we also add a line to ***/etc/pam.d/common-session***:
 
-    echo "session required  pam_limits.so" | tee -a /etc/pam.d/common-session
+```bash
+echo "session required  pam_limits.so" | tee -a /etc/pam.d/common-session
+```
 
 <a id="snappy"></a>
 #### Install snappy
@@ -216,30 +234,38 @@ In order to use compression we need the common Hadoop library, libhadoop.so, and
 
 Start by downloading and installing ProtoBuf. Hadoop requres version 2.5+ which is not available as a Debian package unfortunately.
 
-    wget --no-check-certificate https://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
-    tar zxvf protobuf-2.5.0.tar.gz
-    cd protobuf-2.5.0
-    ./configure; make; make install
-    export LD_LIBRARY_PATH=/usr/local/lib/
+```bash
+wget --no-check-certificate https://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
+tar zxvf protobuf-2.5.0.tar.gz
+cd protobuf-2.5.0
+./configure; make; make install
+export LD_LIBRARY_PATH=/usr/local/lib/
+```
 
 Download and compile Hadoop:
 
-    apt-get install zlib1g-dev
-    wget http://apache.uib.no/hadoop/common/hadoop-2.4.0/hadoop-2.4.0-src.tar.gz
-    tar zxvf hadoop-2.4.0-src.tar.gz
-    cd hadoop-2.4.0-src/hadoop-common-project/
-    mvn package -Pdist,native -Dskiptests -Dtar -Drequire.snappy -DskipTests
+```bash
+apt-get install zlib1g-dev
+wget http://apache.uib.no/hadoop/common/hadoop-2.4.0/hadoop-2.4.0-src.tar.gz
+tar zxvf hadoop-2.4.0-src.tar.gz
+cd hadoop-2.4.0-src/hadoop-common-project/
+mvn package -Pdist,native -Dskiptests -Dtar -Drequire.snappy -DskipTests
+```
 
 Copy the newly compiled native libhadoop library into /usr/local/lib, then create the folder in which HBase looks for it and create a shortcut from there to /usr/local/lib/libhadoop.so:
 
-    cp hadoop-common/target/native/target/usr/local/lib/libhadoop.* /usr/local/lib
-    mkdir -p $HBASEDIR/lib/native/Linux-amd64-64/
-    cd $HBASEDIR/lib/native/Linux-amd64-64/
-    ln -s /usr/local/lib/libhadoop.so* .
+```bash
+cp hadoop-common/target/native/target/usr/local/lib/libhadoop.* /usr/local/lib
+mkdir -p $HBASEDIR/lib/native/Linux-amd64-64/
+cd $HBASEDIR/lib/native/Linux-amd64-64/
+ln -s /usr/local/lib/libhadoop.so* .
+```
 
 Install snappy from Debian packages:
 
-    apt-get install libsnappy-dev
+```bash
+apt-get install libsnappy-dev
+```
 
 <a id="ConfiguringHBase"></a>
 #### Configuring HBase
@@ -251,16 +277,21 @@ A shell script setting various environment variables related to how HBase and Ja
 
 Start by setting the JAVA_HOME, which points to where Java is installed:
 
-    export JAVA_HOME=/usr/lib/jvm/java-7-oracle/
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-7-oracle/
+```
 
 Then increase the size of the [Java Heap][30] from the default of 1000 which is a bit low:
 
-    export HBASE_HEAPSIZE=8000
+```bash
+export HBASE_HEAPSIZE=8000
+```
 
 <a id="Background"></a>
 #### **conf/hbase-site.xml**
 An XML file containing HBase specific configuration parameters.
 
+```xml
     <configuration>
     
        <property>
@@ -274,12 +305,15 @@ An XML file containing HBase specific configuration parameters.
       </property>
 
     </configuration>
+```
 
 <a id="compression"></a>
 #### Testing HBase and compression
 Now that we have installed snappy and configured HBase we can verify that HBase is working and that the compression is loaded by doing:
 
-    $HBASEDIR/bin/hbase org.apache.hadoop.hbase.util.CompressionTest /tmp/test.txt snappy
+```bash
+$HBASEDIR/bin/hbase org.apache.hadoop.hbase.util.CompressionTest /tmp/test.txt snappy
+```
 
 This should output some lines with information and end with **SUCCESS**.
 
@@ -288,26 +322,36 @@ This should output some lines with information and end with **SUCCESS**.
 #### Starting HBase
 HBase ships with scripts for starting and stopping it, namely start-hbase.sh and stop-hbase.sh. You start HBase with
 
-    $HBASEDIR/bin/start-hbase.sh
+```bash
+$HBASEDIR/bin/start-hbase.sh
+```
 
 Then look at the log to ensure it has started without any serious errors:
 
-    tail -fn100 $HBASEDIR/bin/../logs/hbase-root-master-opentsdb.log
+```bash
+tail -fn100 $HBASEDIR/bin/../logs/hbase-root-master-opentsdb.log
+```
 
 If you want HBase to start automatically on boot you can use a process management tool such as [Monit][31] or simply put it in ***/etc/rc.local***:
 
-    /opt/hbase-0.98.2-hadoop2/bin/start-hbase.sh
+```bash
+/opt/hbase-0.98.2-hadoop2/bin/start-hbase.sh
+```
 
 <a id="InstallingOpenTSDB"></a>
 ### Installing OpenTSDB
 Start by installing gnuplot, which is used by the native webui to draw graphs:
 
-    apt-get install gnuplot
+```bash
+apt-get install gnuplot
+```
 
 Then download and install OpenTSDB:
 
-    wget https://github.com/OpenTSDB/opentsdb/releases/download/v2.0.0/opentsdb-2.0.0_all.deb
-    dpkg -i opentsdb-2.0.0_all.deb
+```bash
+wget https://github.com/OpenTSDB/opentsdb/releases/download/v2.0.0/opentsdb-2.0.0_all.deb
+dpkg -i opentsdb-2.0.0_all.deb
+```
 
 <a id="ConfiguringOpenTSDB"></a>
 #### Configuring OpenTSDB
@@ -315,14 +359,18 @@ The configuration file is ***/etc/opentsdb/opentsdb.conf***. It has some of the 
 
 The defaults are reasonable but we need to make a few tweaks, the first is to add this:
 
-    tsd.core.auto_create_metrics = true
+```bash
+tsd.core.auto_create_metrics = true
+```
 
 This will make OpenTSDB accept previously unseen metrics and add them to the database. This is very useful in the beginning when feeding data into OpenTSDB. Without this you will have to use the command ***mkmetric*** for each metric you will store and get errors that might be hard to trace if the metric you create do not match what is actually sent.
 
 Then we will add support for chunked requests via the HTTP API:
 
-    tsd.http.request.enable_chunked = true
-    tsd.http.request.max_chunk = 16000
+```bash
+tsd.http.request.enable_chunked = true
+tsd.http.request.max_chunk = 16000
+```
 
 Some tools and plugins (such as our own [improved collectd to OpenTSDB plugin][33]) send multiple data points in a single HTTP request for increased efficiency and requires this setting to be enabled.
 
@@ -330,21 +378,29 @@ Some tools and plugins (such as our own [improved collectd to OpenTSDB plugin][3
 #### Creating HBase tables
 Before we start OpenTSDB we need to create the necessary tables in HBase:
 
-    env COMPRESSION=SNAPPY HBASE_HOME=$HBASEDIR /usr/share/opentsdb/tools/create_table.sh
+```bash
+env COMPRESSION=SNAPPY HBASE_HOME=$HBASEDIR /usr/share/opentsdb/tools/create_table.sh
+```
 
 <a id="StartingOpenTSDB"></a>
 #### Starting OpenTSDB
 Since version 2.0.0 OpenTSDB ships as a Debian package and includes SysV init scripts. To start OpenTSDB as a daemon running in the background we run:
 
-    service opentsdb start
+```bash
+service opentsdb start
+```
 
 And then check the logs for any errors or other relevant information:
 
-    tail -f /var/log/opentsdb/opentsdb.log
+```bash
+tail -f /var/log/opentsdb/opentsdb.log
+```
 
 If the server is started successfully the last line of the log should say:
 
-    13:42:30.900 INFO  [TSDMain.main] - Ready to serve on /0.0.0.0:4242
+```bash
+13:42:30.900 INFO  [TSDMain.main] - Ready to serve on /0.0.0.0:4242
+```
 
 And you can now browse to your new OpenTSDB in a browser using http://hostname:4242 !
 
@@ -367,15 +423,19 @@ It is not within the scope of this paper to go into details about how to feed da
 
 The commands for installing dependencies and downloading tcollector are
 
-    aptitude install git python
-    cd /opt
-    git clone git://github.com/OpenTSDB/tcollector.git
+```bash
+aptitude install git python
+cd /opt
+git clone git://github.com/OpenTSDB/tcollector.git
+```
 
 Configuration is in the startup script ***tcollector/startstop***, you will need to uncomment and set the value of TSD_HOST to point to your OpenTSDB server.
 
 To start it run
 
-    /opt/tcollector/startstop start
+```bash
+/opt/tcollector/startstop start
+```
 
 This is also the command you want to add to ***/etc/rc.local*** in order to have the agent automatically start at boot. Logfiles are saved in ***/var/log/tcollector.log*** and they are rotated automatically.
 
@@ -472,32 +532,10 @@ CPU usage - 1300Mhz, see Figure 2 above.
 Even without tuning, a single instance OpenTSDB installation is able to handle significant amounts of data before running into IO problems. This comes at a cost of CPU, currently OpenTSDB will consume > 300% the amount of CPU cycles compared to rrdcached for storage. But this is offset by a 85-95% reduction in disk load. In absolute terms for our particular set up (one 2 year old HP DL360p Gen8 running VMware vSphere 5.5) CPU usage increased from 15% to 25% while reducing IOPS load from 70% to &lt; 10%.
 
 <br>
-<br>
+
 *Fine tuning of parameters (such as Java GC) as well as detailed analysis of memory usage is outside the scope of this brief paper and detailed information may be found elsewhere ([51],[52],[53]) for those interested.*
-<br>
-<br>
 
 ----
-
-> **Stian Ovrevage**
-> <table style="border: 0"><tr><td width="100px"> <img src="/blog/2014-06-02-next-generation-monitoring-using-opentsdb-images/stianovrevage.jpg"> </td>
-> <td>Stian is a senior consultant and founder at Peritus Consulting AS. He is currently managing the technical systems for a small FTTH ISP in Norway. He also does consulting for other clients when time permits. When not digging deep into technical challenges he enjoys the outdoors.<br><br>Also on [GitHub][59], [LinkedIn][58], [Facebook][56], [Google+][57] and [Twitter][55].</td></tr></table>
-> 
-
-----
-
-> **Peritus Consulting Technical Reports**
-> <table style="border: 0"><tr><td width="100px"> <img src="/blog/2014-06-02-next-generation-monitoring-using-opentsdb-images/PeritusConsulting_small.png"> </td>
-> <td> Technical reports are in-depth articles aimed at giving actionable advice on new technologies as well as recommended best practices based on tried and true solutions. We cover areas that are lacking of good in depth coverage online but will not re-write topics that are already covered in a satisfactory way elsewhere.
->
-> We also write tech notes which are shorter pieces with thoughts and tips on both technology and the way technology should be used optimally.
->
-> Our official webpage (in Norwegian) is at [www.peritusconsulting.no][60], articles are published on our [GitHub Page][61], we are also on [Twitter][62], [LinkedIn][64] and [Facebook][63].
->
-> </td></tr></table>
-
-----
-
 
 [1]: http://oss.oetiker.ch/rrdtool/
 [2]: http://www.netways.de/index.php?id=2815

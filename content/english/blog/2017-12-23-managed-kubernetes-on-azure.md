@@ -16,7 +16,7 @@ I denne posten setter vi opp et Kubernetes cluster fra scratch ved bruk av Azure
 <br>
 <!--more-->
 
-_Update 29. Dec: There is an [English version of this post here.][33]_
+_Update 29. Dec 2017: There is an [English version of this post here.][33]_
 
 Kubernetes (K8s) er i ferd med å bli de-facto standard for deployments av kontainer-baserte applikasjoner. Microsoft har nå preview av deres managed Kubernetes tjeneste (Azure Kubernetes Service, AKS) som gjør det enkelt å opprette et Kubernetes cluster og rulle ut tjenester uten å måtte ha kompetanse og tid til den daglige driften av selve Kubernetes-clusteret, som per i dag kan være relativt komplisert og tidkrevende.
 
@@ -90,13 +90,13 @@ Noen av fordelene med Docker containers er altså:
 
 Og start en MySQL database fra Windows CMD eller Powershell:
 
-```
+```bash
 docker run --name mysql -p 3306:3306 -e MYSQL_RANDOM_ROOT_PASSWORD=true mysql
 ```
 
 Stop containeren med:
 
-```
+```bash
 docker kill mysql
 ```
 
@@ -151,7 +151,7 @@ Frem til nå har valget vært mellom å drifte sitt eget Kubernetes cluster elle
 <a id="Forbehold"></a>
 ### Forbehold
 
-> Denne gjennomgangen tar utgangspunkt i dokumentasjonen på [Microsoft.com][16]. Å sette opp et Azure Kubernetes cluster fungerte ikke i starten av desember, men per dags dato, 23. desember, ser det ut til å fungere relativt bra. Men, oppgradering av cluster fra Kubernetes 1.7 til 1.8 fungerer for eksempel IKKE.
+> Denne gjennomgangen tar utgangspunkt i dokumentasjonen på [Microsoft.com][16]. Å sette opp et Azure Kubernetes cluster fungerte ikke i starten av desember, men per dags dato, 23. desember 2017, ser det ut til å fungere relativt bra. Men, oppgradering av cluster fra Kubernetes 1.7 til 1.8 fungerer for eksempel IKKE.
 > 
 > AKS er i Preview og Azure jobber kontinuerlig med å gjøre AKS stabilt og støtte så mange Kubernetes-funksjoner som mulig. Amazon Web Services har tilsvarende en lukket invite-only Preview per dags dato mens de også jobber med stabilitet og funksjonalitet.
 > 
@@ -171,9 +171,10 @@ Alle kommandoer gjøres i Windows PowerShell.
 
 Logg på Azure:
 
-```
+```bash
 az login
 ```
+
 Du får en link som du åpner i din browser samt en autentiseringskode. Skriv koden på nettsiden og `az login` lagrer påloggingsinformasjonen slik at du ikke behøver å autentisere igjen på samme maskin.
 
 > **PS** Pålogingsinformasjonen lagres i `C:\Users\Brukernavn\.azure\`. Du må selv passe på at ingen kopierer disse filene. Da får de full tilgang til din Azure konto.
@@ -183,7 +184,7 @@ Du får en link som du åpner i din browser samt en autentiseringskode. Skriv ko
 
 Siden AKS er i Preview/Beta må du eksplisitt aktivere det for å få tilgang til `aks` kommandoene.
 
-```
+```bash
 az provider register -n Microsoft.ContainerService
 az provider show -n Microsoft.ContainerService
 ```
@@ -193,7 +194,7 @@ az provider show -n Microsoft.ContainerService
 
 Her oppretter vi en resource group med navn "min_aks_rg" i Azure region West Europe. 
 
-```
+```bash
 az group create --name min_aks_rg --location westeurope
 ```
 
@@ -203,7 +204,7 @@ az group create --name min_aks_rg --location westeurope
 <a id="OpprettK8sCluster"></a>
 ### Opprette Kubernetes cluster
 
-```
+```bash
 az aks create --resource-group min_aks_rg --name mitt_cluster --node-count 3 --generate-ssh-keys --node-vm-size Standard_B2s --node-osdisk-size 256 --kubernetes-version 1.8.2
 ```
 
@@ -225,15 +226,16 @@ Lagre teksten som kommandoen spytter ut i en fil på en trygg plass. Den innehol
 
 `kubectl` er klienten som gjør alle operasjoner mot ditt Kubernetes cluster. Azure CLI kan installere `kubectl` for deg:
 
-```
+```bash
 az aks install-cli
 ```
 
 Etter `kubectl` er installert behøver vi å få påloggingsinformasjon slik at `kubectl` kan kommunisere med Kubernetes clusteret.
 
-```
+```bash
 az aks get-credentials --resource-group min_aks_rg --name mitt_cluster
 ```
+
 Påloggingsinformasjonen lagres i `C:\Users\Brukernavn\.kube\config`. Hold disse filene hemmelig også.
 
 > **Protip** Når en har flere ulike Kubernetes clusters kan en bytte hvilken `kubectl` skal snakke til med `kubectl config get-contexts` og `kubectl config set-context mitt_cluster`.
@@ -244,7 +246,8 @@ Påloggingsinformasjonen lagres i `C:\Users\Brukernavn\.kube\config`. Hold disse
 For å se at clusteret og `kubectl` virker begynner vi med noen kommandoer.
 
 Se alle vertsmaskiner og status:
-```
+
+```bash
 > kubectl get nodes
 NAME                       STATUS    AGE       VERSION
 aks-nodepool1-16970026-0   Ready     15m       v1.8.2
@@ -254,7 +257,7 @@ aks-nodepool1-16970026-2   Ready     15m       v1.8.2
 
 Se alle tjenester, pods, deployments:
 
-```
+```bash
 > kubectl get all --all-namespaces
 
 NAMESPACE     NAME                                          READY     STATUS    RESTARTS   AGE
@@ -287,7 +290,8 @@ Nå som clusteret er oppe å kjøre kan vi begynne å rulle ut tjenster og deplo
 Vi begynner med å lage en Deployment bestående av 3 containere som alle kjører `nginx:mainline-alpine` imaget fra [Docker hub][31].
 
 **nginx-dep.yaml** ser slik ut:
-```
+
+```yaml
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
@@ -313,7 +317,7 @@ spec:
 
 Last denne inn på clusteret med `kubectl create`:
 
-```
+```bash
 kubectl create -f https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2017-12-23-managed-kubernetes-on-azure/nginx-dep.yaml
 ```
 
@@ -323,7 +327,7 @@ Denne kommandoen oppretter ressursene beskrevet i filen. `kubectl` kan lese file
 
 Vi kan verifisere at Deployment er klar:
 
-```
+```bash
 > kubectl get deploy
 NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 nginx-deployment   3         3         3            3           10m
@@ -331,7 +335,7 @@ nginx-deployment   3         3         3            3           10m
 
 Vi kan også hente de faktiske Pods som er startet:
 
-```
+```bash
 > kubectl get pods
 NAME                                READY     STATUS    RESTARTS   AGE
 nginx-deployment-569477d6d8-dqwx5   1/1       Running   0          10m
@@ -350,7 +354,7 @@ Nå lager vi en tjeneste som ruter trafikk til alle Pods som har label `app: ngi
 
 **nginx-svc.yaml** ser slik ut:
 
-```
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -369,13 +373,13 @@ spec:
 
 Vi ber Kubernetes om å opprette tjeneten vår med `kubectl create` som vanlig:
 
-```
+```bash
 kubectl create -f https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2017-12-23-managed-kubernetes-on-azure/nginx-svc.yaml
 ```
 
 Deretter kan vi se hvilken IP-adresse tjenesten vår har fått av Azure:
 
-```
+```bash
 > kubectl get svc -w
 NAME         CLUSTER-IP   EXTERNAL-IP     PORT(S)        AGE
 nginx        10.0.24.11   13.95.173.255   80:31522/TCP   15m
@@ -388,7 +392,8 @@ En enkel **Welcome to nginx** webside skal nå være tilgjengelig på http://13.
 **Vi har nå en lastbalansert `nginx` tjeneste med 3 servere klar til å ta imot trafikk.**
 
 For ordens skyld kan vi slette tjeneste og deployment etterpå:
-```
+
+```bash
 kubectl delete svc nginx
 kubectl delete deploy nginx-deployment
 ```
@@ -397,9 +402,11 @@ kubectl delete deploy nginx-deployment
 ### Skalere cluster
 
 Hvis en ønsker å endre antall vertsmaskiner/noder som kjører Pods kan en gjøre det via Azure-CLI:
-```
+
+```bash
 az aks scale --name mitt_cluster --resource-group min_aks_rg --node-count 5
 ```
+
 > For øyeblikket blir alle noder opprettet med samme størrelse som når clusteret ble opprettet. AKS vil antageligvis få støtte for [**node-pools**][20] i løpet av neste år. Da kan en opprette grupper av noder med forskjellig størrelse og operativsystem, både Linux og Windows.
 
 
@@ -408,7 +415,7 @@ az aks scale --name mitt_cluster --resource-group min_aks_rg --node-count 5
 
 En kan slette hele clusteret slik:
 
-```
+```bash
 az aks delete --name mitt_cluster --resource-group min_aks_rg --yes
 ```
 
@@ -426,7 +433,7 @@ Start med å laste ned [Helm-klienten][22]. Den henter påloggingsinformasjon os
 
 Installer Helm-serveren (Tiller) på Kubernetes clusteret og oppdater pakke-biblioteket:
 
-```
+```bash
 helm init
 helm repo update
 ```
@@ -438,14 +445,15 @@ Se tilgjengelige pakker (**Charts**) med: `helm search`.
 
 La oss rulle ut en MineCraft installasjon på clusteret vårt, fordi vi kan :-)
 
-```
+```bash
 helm install --name stian-sin --set minecraftServer.eula=true stable/minecraft
 ```
+
 > `--set` overstyrer en eller flere av standardverdiene som er satt i pakken. MineCraft pakken er laget slik at den ikke starter uten å ha sagt seg enig i brukervilkårene i variabelen `minecraftServer.eula`. Alle variablene som kan overstyres i MineCraft pakken er [dokumentert her][23].
 
 Så venter vi litt på at Azure skal tildele en Public IP:
 
-```
+```bash
 > kubectl get svc -w
 stian-sin-minecraft   10.0.237.0   13.95.172.192   25565:30356/TCP   3m
 ```
@@ -459,7 +467,7 @@ Og vipps kan vi kople til Minecraft på `13.95.172.192:25565`.
 
 Kubernetes har også et grafisk web-grensesnitt som gjør det litt lettere å se hvilke ressurser som er i clusteret, se logger og åpne remote-shell inne i en kjørende Pod, blant annet.
 
-```
+```bash
 > kubectl proxy
 Starting to serve on 127.0.0.1:8001
 ```

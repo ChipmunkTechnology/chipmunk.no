@@ -17,11 +17,6 @@ Here I will try to show and tell how I spent an evening digging around in a syst
 
 <br>
 <!--more-->
-<br>
-
----
-
-<br>
 
 **Table of contents**
 
@@ -106,60 +101,72 @@ Some common development tools doesn't support HTTP2, such as Postman. So I found
 
 Using 1 concurrent streams, 1 client and HTTP1 I get an estimate of performance pre-http2:
 
-    h2load --h1 --requests=20000 --clients=1 --max-concurrent-streams=1 https://api.x.com/api/v1/objects/1
+```bash
+h2load --h1 --requests=20000 --clients=1 --max-concurrent-streams=1 https://api.x.com/api/v1/objects/1
+```
 
 The results are as expected:
 
-    finished in 1138.99s, 17.56 req/s, 18.41KB/s
-    requests: 20000 total, 20000 started, 20000 done, 19995 succeeded, 5 failed, 0 errored, 0 timeout
+```bash
+finished in 1138.99s, 17.56 req/s, 18.41KB/s
+requests: 20000 total, 20000 started, 20000 done, 19995 succeeded, 5 failed, 0 errored, 0 timeout
+```
 
-<div style="text-align:center;">
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-apm.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-apm.png">
 </a>
+<br><i>Overview from Elastic APM. Duration is very acceptable at around 20ms. No errors. And about 25% of the time spent doing database queries.</i>
+</p>
 
-_Overview from Elastic APM. Duration is very acceptable at around 20ms. No errors. And about 25% of the time spent doing database queries._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-cpu.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-cpu.png">
 </a>
+<br><i>Container CPU usage. Nothing special.</i>
+</p>
 
-_Container CPU usage. Nothing special._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-db-latency.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-db-latency.png">
 </a>
+<br><i>Database query latency. The vast majority under 5ms. Acceptable.</i>
+</p>
 
-_Database query latency. The vast majority under 5ms. Acceptable._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-db-queries.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-db-queries.png">
 </a>
+<br><i>Number of DB queries per second.</i>
+</p>
 
-_Number of DB queries per second._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-http-latency.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-http-latency.png">
 </a>
+<br><i>HTTP response latency.</i>
+</p>
 
-_HTTP response latency._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-http-requests.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/0-baseline-http1-1-concurrent-http-requests.png">
 </a>
+<br><i>Number of HTTP requests per second. Unsurprisingly the number of database queries are identical to the number of HTTP requests. Latency of HTTP requests also tracks the latency of the (single) database query.</i>
+</p>
 
-_Number of HTTP requests per second. Unsurprisingly the number of database queries are identical to the number of HTTP requests. Latency of HTTP requests also tracks the latency of the (single) database query._
-
-</div>
 
 For http2 we set max concurrent streams to the same as number of requests:
 
-    h2load --requests=200 --clients=1 --max-concurrent-streams=200 https://api.x.com/api/v1/objects/1
+```bash
+h2load --requests=200 --clients=1 --max-concurrent-streams=200 https://api.x.com/api/v1/objects/1
+```
 
 Which results in almost half the latency:
 
-    finished in 1.23s, 162.65 req/s, 158.06KB/s
-    requests: 200 total, 200 started, 200 done, 200 succeeded, 0 failed, 0 errored, 0 timeout
+```bash
+finished in 1.23s, 162.65 req/s, 158.06KB/s
+requests: 200 total, 200 started, 200 done, 200 succeeded, 0 failed, 0 errored, 0 timeout
+```
 
 So HTTP2 is working and providing significant latency improvements. Success!
 
@@ -168,43 +175,52 @@ So HTTP2 is working and providing significant latency improvements. Success!
 
 We start by establishing a baseline with 1 connection querying over and over.
 
-    h2load --h1 --requests=20000 --clients=1 --max-concurrent-streams=1
+```bash
+h2load --h1 --requests=20000 --clients=1 --max-concurrent-streams=1
+```
 
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-apm.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-apm.png">
 </a>
+<br><i>Latency increases as much more computation is done and data is returned. But the latency is consistent which is good. We also see that the database is becomming the bottleneck for where most time is spent.</i>
+</p>
 
-_Latency increases as much more computation is done and data is returned. But the latency is consistent which is good. We also see that the database is becomming the bottleneck for where most time is spent._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-cpu.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-cpu.png">
 </a>
+<br><i>CPU usage increased to 15%. Lower increase than expected considering the complexity involved in serving the requests.</i>
+</p>
 
-_CPU usage increased to 15%. Lower increase than expected considering the complexity involved in serving the requests._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-db-latency.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-db-latency.png">
 </a>
+<br><i>Database query latency still mostly under 5ms.</i>
+</p>
 
-_Database query latency still mostly under 5ms._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-db-queries.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-db-queries.png">
 </a>
+<br><i>Number of database queries increases by a factor of 10 compared to HTTP requests.</i>
+</p>
 
-_Number of database queries increases by a factor of 10 compared to HTTP requests._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-http-latency.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-http-latency.png">
 </a>
+<br><i>HTTP latency.</i>
+</p>
 
-_HTTP latency._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-http-requests.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/1-baseline-http1-1-concurrent-analysis-http-requests.png">
 </a>
+<br><i>HTTP requests per second.</i>
+</p>
 
-_HTTP requests per second._
 
 <a id="TheProblem"></a>
 ## Verifying the fix for assumed workload
@@ -216,9 +232,12 @@ So we verified that HTTP2 gives us a performance boost. But what happens when we
 <a id="TheProblem"></a>
 ### Complex request - HTTP1 6 connections, 500 requests
 
-    finished in 32.25s, 14.88 req/s, 2.29MB/s
-    requests: 500 total, 500 started, 500 done, 500 succeeded, 0 failed, 0 errored, 0 timeout
+```bash
+finished in 32.25s, 14.88 req/s, 2.29MB/s
+requests: 500 total, 500 started, 500 done, 500 succeeded, 0 failed, 0 errored, 0 timeout
+```
 
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/2-burst-http1-6-concurrent-analysis-apm.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/2-burst-http1-6-concurrent-analysis-apm.png">
 </a>
@@ -237,6 +256,7 @@ So we verified that HTTP2 gives us a performance boost. But what happens when we
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/2-burst-http1-6-concurrent-analysis-http-requests.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/2-burst-http1-6-concurrent-analysis-http-requests.png">
 </a>
+</p>
 
 In summary it so far seems to scale linearly with load. Most of the time is spent fetching data from the database. Still very predictable low latency on database queries and the resulting HTTP response.
 
@@ -245,41 +265,49 @@ In summary it so far seems to scale linearly with load. Most of the time is spen
 
 _So now we unleash the beast. Firing all 500 requests at the same time._
 
-    finished in 16.66s, 30.02 req/s, 3.55MB/s
-    requests: 500 total, 500 started, 500 done, 500 succeeded, 0 failed, 0 errored, 0 timeout
+```bash
+finished in 16.66s, 30.02 req/s, 3.55MB/s
+requests: 500 total, 500 started, 500 done, 500 succeeded, 0 failed, 0 errored, 0 timeout
+```
 
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-cpu.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-cpu.png">
 </a>
-
-_CPU on API still doing good. A slight hint of CPU throttling due to CFS, which is used when you set CPU limits in Kubernetes._
+<br><i>CPU on API still doing good. A slight hint of CPU throttling due to CFS, which is used when you set CPU limits in Kubernetes.</i>
+</p>
 
 > Important about Kubernetes and CPU limits<br />
 > Even with CPU limits set to 1 (100% of one CPU), your container can still be throttled at much lower CPU usage. Check out [this article](https://medium.com/omio-engineering/cpu-limits-and-aggressive-throttling-in-kubernetes-c5b20bd8a718) for more information.
 
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-db-latency.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-db-latency.png">
 </a>
+<br><i>Whopsie. The average database query latency has increased drastically, and we have a long tail of very slow queries. Looks like we are starting to see signs of bottlenecks on the database. This might also be affected by our maximum of 60 concurrent connections to the database, resulting in queries having to wait their turn before executing.</i>
+</p>
 
-_Whopsie. The average database query latency has increased drastically, and we have a long tail of very slow queries. Looks like we are starting to see signs of bottlenecks on the database. This might also be affected by our maximum of 60 concurrent connections to the database, resulting in queries having to wait their turn before executing._
 
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-db-queries.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-db-queries.png">
 </a>
+<br><i>It's hard to judge the peak rate of database queries due to limited sampling of the metrics.</i>
+</p>
 
-_It's hard to judge the peak rate of database queries due to limited sampling of the metrics._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-http-latency.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-http-latency.png">
 </a>
+<br><i>Now individual HTTP requests are much slower due to waiting for the database.</i>
+</p>
 
-_Now individual HTTP requests are much slower due to waiting for the database._
-
+<p style="text-align: center;">
 <a href="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-apm-trace.png">
 <img src="/blog/2021-03-06-a-side-quest-in-api-dev-operations-cloud-and-database/3-burst-http2-500-concurrent-analysis-apm-trace.png">
 </a>
-
-_Here is just a random trace from Elastic APM to see if the increased database latency is concentrated to specific queries or tables or just general saturation. Indeed there is a single query responsible for half the time taken for the entire query! We better get back to that in a bit and dig further._
+<br><i>Here is just a random trace from Elastic APM to see if the increased database latency is concentrated to specific queries or tables or just general saturation. Indeed there is a single query responsible for half the time taken for the entire query! We better get back to that in a bit and dig further.</i>
+</p>
 
 In an ideal world all 500 requests should start and complete in 2-300ms regardless. Since that is not happening it's an indication that we are now hitting some other bottleneck.
 
@@ -304,8 +332,10 @@ For the forseable future this does not actually impact real world usage. It's on
 
 Whenever I fix one problem I like to know where, how and when the next problem or limit is likely to appear. When increasing the number of requests and streams I expected to see increasing latency. But instead I see errors appear like a cliff:
 
-    finished in 27.33s, 36.59 req/s, 5.64MB/s
-    requests: 5000 total, 1002 started, 1002 done, 998 succeeded, 4002 failed, 4000 errored, 0 timeout
+```bash
+finished in 27.33s, 36.59 req/s, 5.64MB/s
+requests: 5000 total, 1002 started, 1002 done, 998 succeeded, 4002 failed, 4000 errored, 0 timeout
+```
 
 Consulting the logs for both the nginx load balancer and the API there are no records of failing requests. Since nginx does not pass the HTTP2 connection directly to the API, but instead "unbundles" them into HTTP1 requests I suspect there might be issues with connection limits or even available ports from nginx to the API. But maybe it's a configuration issue. By default nginx does [not limit the number of connections to a backend](http://nginx.org/en/docs/http/ngx_http_upstream_module.html#server) (our API). . But, there is actually a [default limit to the number of HTTP2 requests that can be served over a single connection](https://nginx.org/en/docs/http/ngx_http_v2_module.html#http2_max_requests) - And it happens to be 1000.
 

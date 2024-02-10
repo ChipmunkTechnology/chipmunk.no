@@ -25,7 +25,7 @@ I thought it would be a good chance to go a bit deeper and verify some of our as
 First I do a `kubectl describe node <node>` on 2-3 of the nodes to get an idea of how things are looking:
 
 
-```sh
+```bash
 Resource                       Requests          Limits
 --------                       --------          ------
 cpu                            930m (98%)        5500m (585%)
@@ -40,7 +40,7 @@ We use `Standard DS1 v2` instances as AKS nodes and they have 1 CPU core and 3.5
 
 The output of `kubectl describe node` also gives us info on the Capacity (total node size) and Allocatable (resources available to run Pods).
 
-```
+```bash
 Capacity:
  cpu:                            1
  memory:                         3500452Ki
@@ -53,7 +53,7 @@ So we have lost **60 millicores / 6%** of CPU and **1685Mi‬B / 48%** of memory
 
 I connect to another cluster that has double the node size (`Standard DS2 v2`) and compare: 
 
-```
+```bash
 Capacity:
  cpu:                            2
  memory:                         7113160Ki
@@ -68,10 +68,43 @@ So CPU reservations are close to fixed regardless of node size while memory rese
 
 What causes this "waste"? Reading up on [kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/) gives a few clues. Kubelet will reserve CPU and memory resources for itself and other Kubernetes processes. It will also reserve a portion of memory to act as a buffer whenever a Pod is going beyond it's memory limits to avoid risking System OOM, potentially making the whole node unstable.
 
-To figure out what these are configured to we log in to an actual AKS node's console and run `ps ax|grep kube` and the output looks like this:
+To figure out what these are configured to we log in to an actual AKS node's console and run `ps ax|grep kube` and the output looks like this (newlines added by me):
 
-```
-/usr/local/bin/kubelet --enable-server --node-labels=node-role.kubernetes.io/agent=,kubernetes.io/role=agent,agentpool=nodepool1,storageprofile=managed,storagetier=Premium_LRS,kubernetes.azure.com/cluster=MC_clusters_weekly-22_northeurope --v=2 --volume-plugin-dir=/etc/kubernetes/volumeplugins --address=0.0.0.0 --allow-privileged=true --anonymous-auth=false --authorization-mode=Webhook --azure-container-registry-config=/etc/kubernetes/azure.json --cgroups-per-qos=true --client-ca-file=/etc/kubernetes/certs/ca.crt --cloud-config=/etc/kubernetes/azure.json --cloud-provider=azure --cluster-dns=10.2.0.10 --cluster-domain=cluster.local --enforce-node-allocatable=pods --event-qps=0 --eviction-hard=memory.available<750Mi,nodefs.available<10%,nodefs.inodesFree<5% --feature-gates=PodPriority=true,RotateKubeletServerCertificate=true --image-gc-high-threshold=85 --image-gc-low-threshold=80 --image-pull-progress-deadline=30m --keep-terminated-pod-volumes=false --kube-reserved=cpu=60m,memory=896Mi --kubeconfig=/var/lib/kubelet/kubeconfig --max-pods=110 --network-plugin=cni --node-status-update-frequency=10s --non-masquerade-cidr=0.0.0.0/0 --pod-infra-container-image=k8s.gcr.io/pause-amd64:3.1 --pod-manifest-path=/etc/kubernetes/manifests --pod-max-pids=-1 --rotate-certificates=false --streaming-connection-idle-timeout=5m
+```bash
+/usr/local/bin/kubelet --enable-server \
+    --node-labels=node-role.kubernetes.io/agent=,kubernetes.io/role=agent,agentpool=nodepool1,storageprofile=managed,storagetier=Premium_LRS,kubernetes.azure.com/cluster=MC_clusters_weekly-22_northeurope \
+    --v=2 \
+    --volume-plugin-dir=/etc/kubernetes/volumeplugins \
+    --address=0.0.0.0 \
+    --allow-privileged=true \
+    --anonymous-auth=false \
+    --authorization-mode=Webhook \
+    --azure-container-registry-config=/etc/kubernetes/azure.json \
+    --cgroups-per-qos=true \
+    --client-ca-file=/etc/kubernetes/certs/ca.crt \
+    --cloud-config=/etc/kubernetes/azure.json \
+    --cloud-provider=azure \
+    --cluster-dns=10.2.0.10 \
+    --cluster-domain=cluster.local \
+    --enforce-node-allocatable=pods \
+    --event-qps=0 \
+    --eviction-hard=memory.available<750Mi,nodefs.available<10%,nodefs.inodesFree<5% \
+    --feature-gates=PodPriority=true,RotateKubeletServerCertificate=true \
+    --image-gc-high-threshold=85 \
+    --image-gc-low-threshold=80 \
+    --image-pull-progress-deadline=30m \
+    --keep-terminated-pod-volumes=false \
+    --kube-reserved=cpu=60m,memory=896Mi \
+    --kubeconfig=/var/lib/kubelet/kubeconfig \
+    --max-pods=110 \
+    --network-plugin=cni \
+    --node-status-update-frequency=10s \
+    --non-masquerade-cidr=0.0.0.0/0 \
+    --pod-infra-container-image=k8s.gcr.io/pause-amd64:3.1 \
+    --pod-manifest-path=/etc/kubernetes/manifests \
+    --pod-max-pids=-1 \
+    --rotate-certificates=false \
+    --streaming-connection-idle-timeout=5m
 ```
 
 > To log in to the console of a node, go to the MC_resourcegroup_clustername_region resource-group and select the VM. Then go to `Boot diagnostics` and enable it. Go to `Reset password` to create yourself a user and then `Serial console` to log in and execute commands.

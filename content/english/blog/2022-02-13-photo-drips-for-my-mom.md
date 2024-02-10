@@ -69,23 +69,25 @@ Using the browser I upload all the photos in batch to a new bucket. In a sub-fol
 
 I verify that I can load the pictures in my browser with the public S3 URL. It took a few attempts at getting the permissions right, and I suspect adding this policy was required even though everything in the settings was set to “Full public access”.
 
-    {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Sid": "PublicRead",
-                "Effect": "Allow",
-                "Principal": "*",
-                "Action": [
-                    "s3:GetObject",
-                    "s3:GetObjectVersion"
-                ],
-                "Resource": [
-                    "arn:aws:s3:::memorydrops/*"
-                ]
-            }
-        ]
-    }
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicRead",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": [
+                "s3:GetObject",
+                "s3:GetObjectVersion"
+            ],
+            "Resource": [
+                "arn:aws:s3:::memorydrops/*"
+            ]
+        }
+    ]
+}
+```
 
 ## Sending the e-mail
 
@@ -109,7 +111,9 @@ Picking the right photo each day is simply select file N, where N is the days si
 
 Ideally I would use AWS S3 API to list the contents of the bucket to get the available files. But to save some time the “photo index” is simply a text file listing the files:
 
-    ls > filelist.txt
+```bash
+ls > filelist.txt
+```
 
 I create a new Lambda function and paste the python script and filelist.txt directly in the Lambda code editor and deploy and test it. Working!
 
@@ -137,11 +141,9 @@ All in all this project was started with filtering photos at 3pm, having dinner 
 
 Expected costs
 
-    S3 offers 5GB of standard storage for free for 12 months. After that I expect the cost to be in the $0.x range per month.
-
-    API Gateway offers 1 Million API calls per month for free for 12 months. After that I expect the cost to be in the $0.x range per month.
-
-    Lambda offers 1 Million requests per month forever.
+- S3 offers 5GB of standard storage for free for 12 months. After that I expect the cost to be in the $0.x range per month.
+- API Gateway offers 1 Million API calls per month for free for 12 months. After that I expect the cost to be in the $0.x range per month.
+- Lambda offers 1 Million requests per month forever.
 
 Performance has been sacrificed for the gallery to make it simple. Server-side rendering is not going to be as fast as client-side. Python is not the fastest alternative. Using a FaaS such as Lambda also introduces penalties and unknowns (cold starts, etc). Yet the gallery HTML loads in ~200ms and and seems instant.
 

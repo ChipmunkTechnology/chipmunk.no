@@ -11,7 +11,6 @@ excerpt_separator: <!--more-->
 #draft: false
 ---
 
-
 Understanding the characteristics of disk performance of a platform might be more important than you think. If disk resources are not correctly matched to your workload, your performance will suffer and might lead you to incorrectly diagnose a problem as being related to CPU or memory.
 
 <br>
@@ -128,24 +127,28 @@ The best tool for measuring disk performance is `fio`, even though it might seem
 
 Installing `fio` on Ubuntu:
 
-    apt-get install fio
+```bash
+apt-get install fio
+```
 
 `fio` executes `jobs` described in a file. Here is the top of our jobs file:
 
-    [global]
-    ioengine=libaio   # sync|libaio|mmap
-    group_reporting
-    thread
-    size=10g          # Size of test file
-    cpus_allowed=1    # Only use this CPU core
-    runtime=300s      # Run test for 5 minutes
+```bash
+[global]
+ioengine=libaio   # sync|libaio|mmap
+group_reporting
+thread
+size=10g          # Size of test file
+cpus_allowed=1    # Only use this CPU core
+runtime=300s      # Run test for 5 minutes
 
-    [test1]
-    filename=/tmp/fio-test-file
-    direct=1          # If value is true, use non-buffered I/O. Non-buffered I/O usually means O_DIRECT
-    readwrite=write   # read|write|randread|randwrite|readwrite|randrw
-    iodepth=1         # How many operations to queue to the disk
-    blocksize=4k
+[test1]
+filename=/tmp/fio-test-file
+direct=1          # If value is true, use non-buffered I/O. Non-buffered I/O usually means O_DIRECT
+readwrite=write   # read|write|randread|randwrite|readwrite|randrw
+iodepth=1         # How many operations to queue to the disk
+blocksize=4k
+```
 
 The fields we will be changing for the various tests are `direct`, `readwrite`, `iodepth` and `blocksize`. Save the contents in a file named `jobs.fio` and we run a test with `fio --sector test1 jobs.fio` and wait until the test completes.
 
@@ -167,26 +170,32 @@ Then we tag that node with `kubectl label nodes aks-nodepool1-37707184-2 tag=dis
 
 A StorageClass in Kubernetes is a specification of a underlying disk that Pods can request usage of through `volumeClaimTemplates`. AKS comes with a default StorageClass `managed-premium` that has caching enabled. Most of these tests require the Azure cache disabled so create a new StorageClass `managed-premium-retain-nocache`:
 
-    kind: StorageClass
-    apiVersion: storage.k8s.io/v1
-    metadata:
-      name: managed-premium-retain-nocache
-    provisioner: kubernetes.io/azure-disk
-    reclaimPolicy: Retain
-    parameters:
-      storageaccounttype: Premium_LRS
-      kind: Managed
-      cachingmode: None
+```yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: managed-premium-retain-nocache
+provisioner: kubernetes.io/azure-disk
+reclaimPolicy: Retain
+parameters:
+  storageaccounttype: Premium_LRS
+  kind: Managed
+  cachingmode: None
+```
 
 You can add it to your cluster with:
 
-    kubectl apply -f https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2019-02-23-disk-performance-on-aks-part-1/storageclass.yaml
+```bash
+kubectl apply -f https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2019-02-23-disk-performance-on-aks-part-1/storageclass.yaml
+```
 
 ---
 
 Next we create a StatefulSet that uses a `volumeClaimTemplate` to request a 250GB Azure disk. This provisions a P15 Azure Premium SSD with 125MB/s bandwidth and 1100 IOPS:
 
-    kubectl apply -f https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2019-02-23-disk-performance-on-aks-part-1/ubuntu-statefulset.yaml
+```bash
+kubectl apply -f https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2019-02-23-disk-performance-on-aks-part-1/ubuntu-statefulset.yaml
+```
 
 Follow the progress of the Pod creation with `kubectl get pods -w` and wait until it is `Running`.
 
@@ -196,24 +205,29 @@ When the Pod is `Running` we can start a shell on it with `kubectl exec -it disk
 
 Once inside `bash` on the Pod, we install `fio`:
 
-    apt-get update && apt-get install -y fio wget
+```bash
+apt-get update && apt-get install -y fio wget
+```
 
 And save the contents of in the Pod:
 
-    wget https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2019-02-23-disk-performance-on-aks-part-1/jobs.fio
+```bash
+wget https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2019-02-23-disk-performance-on-aks-part-1/jobs.fio
+```
 
 Now we can run the different test sections one by one. **PS: If you don't specify a section `fio` will run all the tests _simultaneously_, which is not what we want.**
 
-    fio --section=test1 jobs.fio
-    fio --section=test2 jobs.fio
-    fio --section=test3 jobs.fio
-    fio --section=test4 jobs.fio
-    fio --section=test5 jobs.fio
-    fio --section=test6 jobs.fio
-    fio --section=test7 jobs.fio
-    fio --section=test8 jobs.fio
-    fio --section=test9 jobs.fio
-
+```bash
+fio --section=test1 jobs.fio
+fio --section=test2 jobs.fio
+fio --section=test3 jobs.fio
+fio --section=test4 jobs.fio
+fio --section=test5 jobs.fio
+fio --section=test6 jobs.fio
+fio --section=test7 jobs.fio
+fio --section=test8 jobs.fio
+fio --section=test9 jobs.fio
+```
 
 <a id="Tests"></a>
 ## Test results

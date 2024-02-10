@@ -88,13 +88,13 @@ To recap, some of the advantages of Docker containers are:
 
 To start a MySQL database container from Windows CMD or Powershell:
 
-```
+```bash
 docker run --name mysql -p 3306:3306 -e MYSQL_RANDOM_ROOT_PASSWORD=true mysql
 ```
 
 Stop the container with:
 
-```
+```bash
 docker kill mysql
 ```
 
@@ -149,7 +149,7 @@ Until now the choice has been running your own Kubernetes cluster or using Googl
 <a id="Caveats"></a>
 ### Caveats
 
-> This guide is based on the documentation on [Microsoft.com][16]. Setting up a Azure Kubernetes cluster did not work in the beginning of December, but today, 23. December, it seems to work fairly well. But, upgrading the cluster from Kubernetes 1.7 to 1.8 for example does NOT work.
+> This guide is based on the documentation on [Microsoft.com][16]. Setting up a Azure Kubernetes cluster did not work in the beginning of December, but today, 23. December 2017, it seems to work fairly well. But, upgrading the cluster from Kubernetes 1.7 to 1.8 for example does NOT work.
 > 
 > AKS is in Preview and Azure are working continuously to make AKS stable and to support as many Kubernetes-features as possible. Amazon Web Services has a similar closed invite-only Preview currently while working on stability and features.
 > 
@@ -168,9 +168,11 @@ All commands executed in Windows PowerShell.
 ### Azure login
 
 Log on to Azure:
-```
+
+```bash
 az login
 ```
+
 You will get a link to open in your browser together with an authentication code. Enter the code on the webpage and `az login` will save the login information so that you will not have to authenticate again on the same machine.
 
 > **PS** The login information gets saved in `C:\Users\Username\.azure\`. You have to make sure nobody can access these files. They will then have full access to your Azure account.
@@ -180,7 +182,7 @@ You will get a link to open in your browser together with an authentication code
 
 Since AKS is in Preview/Beta, you explicitly have to activate it in your subscription to get access to the `aks` subcommands.
 
-```
+```bash
 az provider register -n Microsoft.ContainerService
 az provider show -n Microsoft.ContainerService
 ```
@@ -190,7 +192,7 @@ az provider show -n Microsoft.ContainerService
 
 Here we create a resource group named "my_aks_rg" in Azure region West Europe.
 
-```
+```bash
 az group create --name my_aks_rg --location westeurope
 ```
 
@@ -200,7 +202,7 @@ az group create --name my_aks_rg --location westeurope
 <a id="CreateK8sCluster"></a>
 ### Create Kubernetes cluster
 
-```
+```bash
 az aks create --resource-group my_aks_rg --name my_cluster --node-count 3 --generate-ssh-keys --node-vm-size Standard_B2s --node-osdisk-size 128 --kubernetes-version 1.8.2
 ```
 
@@ -222,15 +224,16 @@ Save the output of the command in a file in a secure location. It contains keys 
 
 `kubectl` is the client which performs all operations against your Kubernetes cluster. Azure CLI can install `kubectl` for you:
 
-```
+```bash
 az aks install-cli
 ```
 
 After `kubectl` is installed we need to get login information so that `kubectl` can communicate with the Kubernetes cluster.
 
-```
+```bash
 az aks get-credentials --resource-group my_aks_rg --name my_cluster
 ```
+
 The login information is saved in `C:\Users\Username\.kube\config`. Keep these files secure as well.
 
 > **Protip** When you have several Kubernetes clusters you can change which one `kubectl` talks to with `kubectl config get-contexts` and `kubectl config set-context my_cluster`.
@@ -241,7 +244,8 @@ The login information is saved in `C:\Users\Username\.kube\config`. Keep these f
 To check that the cluster and `kubectl` works we start with a couple of commands.
 
 See all agent nodes and status:
-```
+
+```bash
 > kubectl get nodes
 NAME                       STATUS    AGE       VERSION
 aks-nodepool1-16970026-0   Ready     15m       v1.8.2
@@ -250,7 +254,8 @@ aks-nodepool1-16970026-2   Ready     15m       v1.8.2
 ```
 
 See all services, pods and deployments:
-```
+
+```bash
 > kubectl get all --all-namespaces
 
 NAMESPACE     NAME                                          READY     STATUS    RESTARTS   AGE
@@ -284,7 +289,8 @@ Now that the clsuter is up we can start rolling out services and deployments on 
 Lets start with creating a Deployment consiting of 3 containers all running the `nginx:mainline-alpine` image from [Docker hub][31].
 
 **nginx-dep.yaml** looks like this:
-```
+
+```yaml
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
@@ -310,7 +316,7 @@ spec:
 
 Load this into the cluster with `kubectl create`:
 
-```
+```bash
 kubectl create -f https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2017-12-23-managed-kubernetes-on-azure/nginx-dep.yaml
 ```
 
@@ -320,7 +326,7 @@ This command creates the resources described in the file. `kubectl` can read fil
 
 We can verify that the Deployment is ready:
 
-```
+```bash
 > kubectl get deploy
 NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 nginx-deployment   3         3         3            3           10m
@@ -328,7 +334,7 @@ nginx-deployment   3         3         3            3           10m
 
 We can also get the actual Pods that are running:
 
-```
+```bash
 > kubectl get pods
 NAME                                READY     STATUS    RESTARTS   AGE
 nginx-deployment-569477d6d8-dqwx5   1/1       Running   0          10m
@@ -347,7 +353,7 @@ Lets create a service which forwards traffic to all Pods with label `app: nginx`
 
 **nginx-svc.yaml** looks like this:
 
-```
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -366,12 +372,13 @@ spec:
 
 We tell Kubernetes to create our service with `kubectl create` as usual:
 
-```
+```bash
 kubectl create -f https://raw.githubusercontent.com/StianOvrevage/stian.tech/master/images/2017-12-23-managed-kubernetes-on-azure/nginx-svc.yaml
 ```
 
 We can then wait and see which IP-address Azure assigns our service:
-```
+
+```bash
 > kubectl get svc -w
 NAME         CLUSTER-IP   EXTERNAL-IP     PORT(S)        AGE
 nginx        10.0.24.11   13.95.173.255   80:31522/TCP   15m
@@ -382,7 +389,8 @@ nginx        10.0.24.11   13.95.173.255   80:31522/TCP   15m
 A simple **Welcome to nginx** webpage should now be available on http://13.95.173.255 (_remember to replace with your own External-IP_).
 
 We can also delete the service and deployment afterwards:
-```
+
+```bash
 kubectl delete svc nginx
 kubectl delete deploy nginx-deployment
 ```
@@ -391,7 +399,8 @@ kubectl delete deploy nginx-deployment
 ### Scaling the cluster
 
 If we want to change the number of agent nodes running Pods we can do that via Azure-CLI:
-```
+
+```bash
 az aks scale --name my_cluster --resource-group my_aks_rg --node-count 5
 ```
 
@@ -402,7 +411,8 @@ az aks scale --name my_cluster --resource-group my_aks_rg --node-count 5
 ### Delete cluster
 
 You can delete the whole cluster like this:
-```
+
+```bash
 az aks delete --name my_cluster --resource-group my_aks_rg --yes
 ```
 
@@ -420,7 +430,7 @@ Start by downloading the [Helm-client][22]. It will read login information etc. 
 
 Install the Helm-server (**Tiller**) on the Kubernetes cluster and update the package library:
 
-```
+```bash
 helm init
 helm repo update
 ```
@@ -432,14 +442,15 @@ See available packages (**Charts**) with `helm search`.
 
 Lets deploy a MineCraft server installation on our cluster, just because we can :-)
 
-```
+```bash
 helm install --name stians --set minecraftServer.eula=true stable/minecraft
 ```
 
 > `--set` overrides one or more of the standard values configured in the package. The MineCraft package is made in a way where it does not start without accepting the user license agreement by setting the variable `minecraftServer.eula`. All the variables that can be set in the MineCraft package are [documented here][23].
 
 Then we wait for Azure to assign us a Public IP:
-```
+
+```bash
 > kubectl get svc -w
 stians-minecraft   10.0.237.0   13.95.172.192   25565:30356/TCP   3m
 ```
@@ -453,7 +464,7 @@ Now we can connect to our MineCraft server on `13.95.172.192:25565`!
 
 Kubernetes also has a graphic web user-interface which makes it a bit easier to see which resources are in the cluster, view logs and even open a remote shell inside a running Pod, among other things.
 
-```
+```bash
 > kubectl proxy
 Starting to serve on 127.0.0.1:8001
 ```

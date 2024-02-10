@@ -78,11 +78,9 @@ Let’s assume the `istio-proxy` sidecar template have been updated by the platf
 
 That breakage will go un-noticed until:
 
-    The product team commits changes that triggers a re-deploy. The deployment will suddenly fail but it might not have anything to do with the actual changes the team did to the application. This is surely confusing!
-
-    The platform team for example upgrades a pool of worker nodes causing all `Pods` to be re-created on new nodes.
-
-    A Pod is re-created when a Kubernetes worker node crashes. In this scenario it appears the failure spawned into existence out of nowhere since neither the product team nor platform team actually “did” anything to trigger it.
+- The product team commits changes that triggers a re-deploy. The deployment will suddenly fail but it might not have anything to do with the actual changes the team did to the application. This is surely confusing!
+- The platform team for example upgrades a pool of worker nodes causing all `Pods` to be re-created on new nodes.
+- A Pod is re-created when a Kubernetes worker node crashes. In this scenario it appears the failure spawned into existence out of nowhere since neither the product team nor platform team actually “did” anything to trigger it.
 
 __Also worth noting is that any attempts at Rolling back a Deployment now containing failing Pods will not actually fix anything.__
 
@@ -92,9 +90,8 @@ It’s the sidecar templates that needs to be rolled back and Pods probably need
 
 We can mitigate drift by:
 
-    Re-starting all Pods in the cluster whenever we update sidecar injection templates.
-
-    Sometimes we might forget to re-start so regularly re-start all Pods in the cluster anyway.
+- Re-starting all Pods in the cluster whenever we update sidecar injection templates.
+- Sometimes we might forget to re-start so regularly re-start all Pods in the cluster anyway.
 
 ## k8s-sidecar-rollout
 
@@ -102,7 +99,8 @@ To make these restarts easy and fast I’ve created https://github.com/StianOvre
 
 It’s a tool that figures out (with your help) which workloads (Deployment, StatefulSet, DaemonSet) that needs to be rolled out again (re-started) and then rolls out for you. Head over to the GitHub repo for installation and complete usage instructions. Here is an example of how it can be used:
 
-    python3 sidecar-rollout.py \
+```python
+python3 sidecar-rollout.py \
     --sidecar-container-name=istio-proxy \
     --include-daemonset=true \
     --annotation-prefix=myCompany \
@@ -110,14 +108,17 @@ It’s a tool that figures out (with your help) which workloads (Deployment, Sta
     --only-started-before="2022-05-01 13:00" \
     --exclude-namespace=kube-system \
     --confirm=true
+```
 
 This will gather all Pods with a container named `istio-sidecar` belonging to a Deployment or DaemonSet that was started before 2022-05-01 13:00 (which may be when we updated the istio sidecar config template) excluding the `kube-system` namespace. It will patch the workloads with two annotations with `myCompany` prefix and run 10 rollouts in parallel.
 
 The script that now re-starts Pods adds two annotations indicating that a restart to update sidecars has occurred as well as the time:
 
-    $ kubectl get pods -n product-team some-api-7cdc65482b-ged13 -o yaml | yq '.metadata.annotations'
-    sidecarRollout.rollout.timestamp: 2022-05-03T18:05:31
-    sidecarRollout.rollout.reason: Update sidecars istio-proxy
+```bash
+$ kubectl get pods -n product-team some-api-7cdc65482b-ged13 -o yaml | yq '.metadata.annotations'
+sidecarRollout.rollout.timestamp: 2022-05-03T18:05:31
+sidecarRollout.rollout.reason: Update sidecars istio-proxy
+```
 
 The idea is that if your Pods are suddenly failing, you can quickly check the annotations and see if it has anything to do with sidecar updates or not.
 
